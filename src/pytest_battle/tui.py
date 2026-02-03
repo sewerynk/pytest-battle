@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  ⚙️  P Y T E S T - B A T T L E  ⚙️                                            ║
-║     ═══════════════════════════                                               ║
-║     A Steampunk-Powered Python Learning Engine                                ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-
-Steampunk TUI for pytest-battle - an interactive terminal interface
-for learning Python through exercises.
+Pytest Battle TUI - A fast, simple terminal interface for Python exercises.
 """
 
 import subprocess
@@ -18,461 +11,129 @@ from typing import ClassVar
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
-from textual.reactive import reactive
+from textual.containers import Horizontal, Vertical
 from textual.widgets import (
     Button,
     Footer,
     Header,
     Label,
-    ListItem,
-    ListView,
-    ProgressBar,
     RichLog,
-    Rule,
     Static,
     Tree,
 )
-from textual.widgets.tree import TreeNode
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# STEAMPUNK ASCII ART & DECORATIONS
-# ══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# SIMPLE CSS - Fast to render
+# ═══════════════════════════════════════════════════════════════════════════════
 
-GEAR_SMALL = """⚙"""
-
-GEAR_LARGE = """
-    ▄▄▄▄▄▄▄
-  ▄█ ═══ █▄
- █ ╔═════╗ █
-█══╣ ⚙⚙⚙ ╠══█
- █ ╚═════╝ █
-  ▀█ ═══ █▀
-    ▀▀▀▀▀▀▀
-"""
-
-BANNER = """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║   ⚙️ ═══════════════════════════════════════════════════════════════════ ⚙️   ║
-║   ║                                                                      ║   ║
-║   ║   ██████╗ ██╗   ██╗████████╗███████╗███████╗████████╗               ║   ║
-║   ║   ██╔══██╗╚██╗ ██╔╝╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝               ║   ║
-║   ║   ██████╔╝ ╚████╔╝    ██║   █████╗  ███████╗   ██║                  ║   ║
-║   ║   ██╔═══╝   ╚██╔╝     ██║   ██╔══╝  ╚════██║   ██║                  ║   ║
-║   ║   ██║        ██║      ██║   ███████╗███████║   ██║                  ║   ║
-║   ║   ╚═╝        ╚═╝      ╚═╝   ╚══════╝╚══════╝   ╚═╝                  ║   ║
-║   ║                                                                      ║   ║
-║   ║   ██████╗  █████╗ ████████╗████████╗██╗     ███████╗                ║   ║
-║   ║   ██╔══██╗██╔══██╗╚══██╔══╝╚══██╔══╝██║     ██╔════╝                ║   ║
-║   ║   ██████╔╝███████║   ██║      ██║   ██║     █████╗                  ║   ║
-║   ║   ██╔══██╗██╔══██║   ██║      ██║   ██║     ██╔══╝                  ║   ║
-║   ║   ██████╔╝██║  ██║   ██║      ██║   ███████╗███████╗                ║   ║
-║   ║   ╚═════╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝                ║   ║
-║   ║                                                                      ║   ║
-║   ⚙️ ═══════════════════════════════════════════════════════════════════ ⚙️   ║
-║                                                                              ║
-║        ⚡ A Steam-Powered Python Learning Engine ⚡                          ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-"""
-
-MINI_BANNER = """⚙️ ══ PYTEST-BATTLE ══ ⚙️"""
-
-LEVEL_ICONS = {
-    "junior": "🔩",  # Bolt/screw for beginners
-    "mid": "⚙️",      # Gear for intermediate
-    "senior": "🔧",   # Wrench for advanced
-}
-
-STATUS_ICONS = {
-    "passed": "✅",
-    "failed": "❌",
-    "pending": "⏳",
-    "running": "🔄",
-}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STEAMPUNK CSS THEME
-# ══════════════════════════════════════════════════════════════════════════════
-
-STEAMPUNK_CSS = """
-/* ═══════════════════════════════════════════════════════════════════════════
-   STEAMPUNK THEME - Brass, Copper, and Industrial Elegance
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-$brass: #d4a84b;
-$copper: #b87333;
-$bronze: #cd7f32;
-$rust: #8b4513;
-$dark-metal: #2d2d2d;
-$steam: #e8dcc4;
-$coal: #1a1a1a;
-$rivet: #8b7355;
-
+SIMPLE_CSS = """
 Screen {
-    background: $coal;
+    background: #1a1a2e;
 }
 
 Header {
-    background: $rust;
-    color: $steam;
-    text-style: bold;
-    border-bottom: thick $brass;
+    background: #16213e;
+    color: #e94560;
 }
 
 Footer {
-    background: $dark-metal;
-    color: $brass;
-    border-top: thick $copper;
+    background: #16213e;
+    color: #0f3460;
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTAINERS
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 #main-container {
     layout: horizontal;
-    height: 100%;
 }
 
 #sidebar {
-    width: 40;
-    border-right: thick $brass;
-    background: $dark-metal;
-}
-
-#content {
-    width: 1fr;
-    background: $coal;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PANELS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.panel {
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
+    width: 35;
+    background: #16213e;
+    border-right: solid #0f3460;
     padding: 1;
 }
 
-.panel-title {
+#sidebar-title {
     text-align: center;
     text-style: bold;
-    color: $brass;
-    background: $rust;
+    color: #e94560;
     padding: 1;
-    margin-bottom: 1;
-    border: solid $copper;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXERCISE TREE
-   ═══════════════════════════════════════════════════════════════════════════ */
-
 #exercise-tree {
-    background: $dark-metal;
-    scrollbar-color: $brass;
-    scrollbar-color-hover: $copper;
-    scrollbar-color-active: $bronze;
+    background: transparent;
 }
 
 Tree {
     background: transparent;
-    padding: 1;
-}
-
-Tree > .tree--guides {
-    color: $rivet;
 }
 
 Tree > .tree--cursor {
-    background: $rust;
-    color: $steam;
-    text-style: bold;
+    background: #0f3460;
+    color: #eee;
 }
 
-Tree > .tree--highlight {
-    background: $copper 30%;
-}
-
-TreeNode {
-    color: $steam;
-}
-
-TreeNode:hover {
-    background: $copper 20%;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PROGRESS SECTION
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#progress-section {
-    height: auto;
-    max-height: 12;
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
+#content {
+    width: 1fr;
     padding: 1;
 }
 
-#progress-title {
-    text-align: center;
-    text-style: bold;
-    color: $brass;
+#info-panel {
+    height: 6;
+    background: #16213e;
+    border: solid #0f3460;
+    padding: 1;
     margin-bottom: 1;
 }
 
-.progress-row {
+#info-title {
+    color: #e94560;
+    text-style: bold;
+}
+
+#info-text {
+    color: #eee;
+}
+
+#button-bar {
     height: 3;
     margin-bottom: 1;
 }
 
-.progress-label {
-    width: 15;
-    color: $steam;
+Button {
+    margin-right: 1;
 }
 
-ProgressBar {
-    width: 1fr;
-    padding-right: 1;
-}
-
-ProgressBar > .bar--bar {
-    color: $brass;
-    background: $coal;
-}
-
-ProgressBar > .bar--complete {
-    color: $bronze;
-}
-
-#progress-text {
-    text-align: center;
-    color: $copper;
-    text-style: italic;
-    margin-top: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TEST OUTPUT LOG
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#output-section {
+#output-panel {
     height: 1fr;
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
+    background: #0f0f1a;
+    border: solid #0f3460;
 }
 
 #output-title {
-    text-align: center;
+    background: #16213e;
+    color: #e94560;
     text-style: bold;
-    color: $brass;
-    background: $rust;
-    padding: 1;
-    border-bottom: solid $copper;
+    padding: 0 1;
 }
 
-#test-output {
-    background: $coal;
-    color: $steam;
-    padding: 1;
-    scrollbar-color: $brass;
-    scrollbar-color-hover: $copper;
-}
-
-RichLog {
+#output-log {
     background: transparent;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXERCISE INFO PANEL
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#info-section {
-    height: auto;
-    max-height: 15;
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
     padding: 1;
-}
-
-#info-title {
-    text-align: center;
-    text-style: bold;
-    color: $brass;
-    margin-bottom: 1;
-}
-
-#info-content {
-    color: $steam;
-    padding: 1;
-}
-
-.info-label {
-    color: $copper;
-    text-style: bold;
-}
-
-.info-value {
-    color: $steam;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BUTTONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-Button {
-    background: $rust;
-    color: $steam;
-    border: tall $brass;
-    margin: 1;
-    min-width: 16;
-}
-
-Button:hover {
-    background: $copper;
-    border: tall $bronze;
-}
-
-Button:focus {
-    background: $bronze;
-    border: tall $brass;
-    text-style: bold;
-}
-
-Button.-primary {
-    background: $copper;
-}
-
-Button.-success {
-    background: #2e7d32;
-}
-
-Button.-warning {
-    background: $rust;
-}
-
-#button-bar {
-    height: auto;
-    align: center middle;
-    margin: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   STATUS INDICATORS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.status-passed {
-    color: #4caf50;
-    text-style: bold;
-}
-
-.status-failed {
-    color: #f44336;
-    text-style: bold;
-}
-
-.status-pending {
-    color: $brass;
-}
-
-.status-running {
-    color: $copper;
-    text-style: italic;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   DECORATIVE ELEMENTS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.gear-decoration {
-    color: $brass;
-    text-align: center;
-}
-
-.divider {
-    color: $copper;
-    margin: 1 0;
-}
-
-Rule {
-    color: $copper;
-    margin: 1 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WELCOME SCREEN
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#welcome-container {
-    align: center middle;
-    width: 100%;
-    height: 100%;
-}
-
-#welcome-banner {
-    color: $brass;
-    text-align: center;
-    padding: 2;
-}
-
-#welcome-subtitle {
-    color: $copper;
-    text-align: center;
-    text-style: italic;
-    margin-top: 2;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LOADING INDICATOR
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.loading {
-    color: $brass;
-    text-style: italic;
-}
-
-.spinning-gear {
-    color: $copper;
 }
 """
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS
-# ══════════════════════════════════════════════════════════════════════════════
 
 def get_exercises_dir() -> Path:
     """Get the exercises directory."""
     return Path(__file__).parent.parent.parent / "exercises"
 
 
-def get_exercise_status(exercise_path: Path) -> str:
-    """Run tests for an exercise and return status."""
+def run_tests(exercise_path: Path) -> tuple[str, str, int]:
+    """Run pytest for an exercise."""
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", str(exercise_path), "-q", "--tb=no"],
-            capture_output=True,
-            timeout=30,
-            cwd=exercise_path.parent.parent.parent,
-        )
-        return "passed" if result.returncode == 0 else "failed"
-    except Exception:
-        return "failed"
-
-
-def run_exercise_tests(exercise_path: Path) -> tuple[str, str, int]:
-    """Run tests for an exercise and return (stdout, stderr, returncode)."""
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pytest", str(exercise_path), "-v", "--tb=short"],
+            [sys.executable, "-m", "pytest", str(exercise_path), "-v", "--tb=short", "--no-header"],
             capture_output=True,
             text=True,
             timeout=60,
@@ -480,419 +141,332 @@ def run_exercise_tests(exercise_path: Path) -> tuple[str, str, int]:
         )
         return result.stdout, result.stderr, result.returncode
     except subprocess.TimeoutExpired:
-        return "", "⚠️ Test execution timed out!", 1
+        return "", "Test execution timed out!", 1
     except Exception as e:
-        return "", f"⚠️ Error running tests: {e}", 1
+        return "", f"Error: {e}", 1
 
-
-def count_exercises() -> dict[str, tuple[int, int]]:
-    """Count passed/total exercises per level."""
-    exercises_dir = get_exercises_dir()
-    counts = {}
-
-    for level_dir in sorted(exercises_dir.iterdir()):
-        if not level_dir.is_dir():
-            continue
-
-        level_name = level_dir.name.split("_", 1)[-1] if "_" in level_dir.name else level_dir.name
-        passed = 0
-        total = 0
-
-        for ex_dir in sorted(level_dir.iterdir()):
-            if ex_dir.is_dir() and ex_dir.name.startswith("ex"):
-                total += 1
-                if get_exercise_status(ex_dir) == "passed":
-                    passed += 1
-
-        counts[level_name] = (passed, total)
-
-    return counts
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CUSTOM WIDGETS
-# ══════════════════════════════════════════════════════════════════════════════
-
-class GearDecoration(Static):
-    """A decorative gear widget."""
-
-    def __init__(self, size: str = "small", **kwargs):
-        super().__init__(**kwargs)
-        self.gear_size = size
-
-    def compose(self) -> ComposeResult:
-        if self.gear_size == "large":
-            yield Static(GEAR_LARGE, classes="gear-decoration")
-        else:
-            yield Static("⚙️", classes="gear-decoration")
-
-
-class SteampunkProgressBar(Static):
-    """A steampunk-styled progress indicator."""
-
-    progress = reactive(0.0)
-    label = reactive("")
-
-    def __init__(self, label: str = "", **kwargs):
-        super().__init__(**kwargs)
-        self.label = label
-
-    def compose(self) -> ComposeResult:
-        with Horizontal(classes="progress-row"):
-            yield Label(f"{self.label}:", classes="progress-label")
-            yield ProgressBar(total=100, show_eta=False)
-
-    def watch_progress(self, value: float) -> None:
-        """Update progress bar when progress changes."""
-        bar = self.query_one(ProgressBar)
-        bar.update(progress=value)
-
-
-class ExerciseInfo(Static):
-    """Display information about selected exercise."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.exercise_name = ""
-        self.exercise_level = ""
-        self.exercise_status = "pending"
-
-    def compose(self) -> ComposeResult:
-        yield Static("⚙️ ═══ EXERCISE INFO ═══ ⚙️", id="info-title")
-        yield Static("Select an exercise to view details", id="info-content")
-
-    def update_info(self, name: str, level: str, status: str, description: str = ""):
-        """Update the exercise information display."""
-        self.exercise_name = name
-        self.exercise_level = level
-        self.exercise_status = status
-
-        level_icon = LEVEL_ICONS.get(level, "⚙️")
-        status_icon = STATUS_ICONS.get(status, "⏳")
-
-        content = f"""
-[bold]{level_icon} {name}[/bold]
-
-[dim]Level:[/dim] {level.upper()}
-[dim]Status:[/dim] {status_icon} {status.upper()}
-
-{description}
-        """.strip()
-
-        self.query_one("#info-content", Static).update(content)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN TUI APPLICATION
-# ══════════════════════════════════════════════════════════════════════════════
 
 class PytestBattleTUI(App):
-    """The main Pytest Battle TUI application."""
+    """Fast, simple TUI for pytest-battle."""
 
-    TITLE = "⚙️ Pytest Battle ⚙️"
-    SUB_TITLE = "Steam-Powered Python Learning"
-    CSS = STEAMPUNK_CSS
+    TITLE = "Pytest Battle"
+    CSS = SIMPLE_CSS
 
     BINDINGS: ClassVar[list[Binding]] = [
-        Binding("q", "quit", "Quit", show=True),
-        Binding("r", "run_tests", "Run Tests", show=True),
-        Binding("h", "show_hint", "Show Hint", show=True),
-        Binding("f", "refresh", "Refresh", show=True),
-        Binding("escape", "go_back", "Back", show=False),
+        Binding("q", "quit", "Quit"),
+        Binding("r", "run_tests", "Run"),
+        Binding("h", "show_hint", "Hint"),
+        Binding("a", "run_all", "Run All"),
     ]
 
-    selected_exercise: reactive[Path | None] = reactive(None)
+    def __init__(self):
+        super().__init__()
+        self.selected_path: Path | None = None
+        self.selected_level: str = ""
 
     def compose(self) -> ComposeResult:
         yield Header()
 
         with Horizontal(id="main-container"):
-            # Left sidebar with exercise tree
             with Vertical(id="sidebar"):
-                yield Static("⚙️ ═══ EXERCISES ═══ ⚙️", classes="panel-title")
-                yield Tree("📚 Levels", id="exercise-tree")
+                yield Static("[ EXERCISES ]", id="sidebar-title")
+                yield Tree("Levels", id="exercise-tree")
 
-            # Right content area
             with Vertical(id="content"):
-                # Progress section
-                with Vertical(id="progress-section"):
-                    yield Static("⚙️ ═══ STEAM PRESSURE GAUGES ═══ ⚙️", id="progress-title")
-                    yield SteampunkProgressBar(label="🔩 Junior", id="junior-progress")
-                    yield SteampunkProgressBar(label="⚙️  Mid", id="mid-progress")
-                    yield SteampunkProgressBar(label="🔧 Senior", id="senior-progress")
-                    yield Static("", id="progress-text")
+                with Vertical(id="info-panel"):
+                    yield Static("Selected: None", id="info-title")
+                    yield Static("Select an exercise and press R to run tests", id="info-text")
 
-                # Button bar
                 with Horizontal(id="button-bar"):
-                    yield Button("▶️ Run Tests", id="run-btn", variant="primary")
-                    yield Button("💡 Hint", id="hint-btn", variant="warning")
-                    yield Button("🔄 Refresh", id="refresh-btn")
+                    yield Button("Run [R]", id="btn-run", variant="primary")
+                    yield Button("Hint [H]", id="btn-hint", variant="warning")
+                    yield Button("Run All [A]", id="btn-all")
 
-                # Exercise info
-                with Vertical(id="info-section"):
-                    yield ExerciseInfo(id="exercise-info")
-
-                # Test output
-                with Vertical(id="output-section"):
-                    yield Static("⚙️ ═══ STEAM CONSOLE OUTPUT ═══ ⚙️", id="output-title")
-                    yield RichLog(id="test-output", highlight=True, markup=True)
+                with Vertical(id="output-panel"):
+                    yield Static(" OUTPUT ", id="output-title")
+                    yield RichLog(id="output-log", highlight=True, markup=True)
 
         yield Footer()
 
     def on_mount(self) -> None:
-        """Initialize the app when mounted."""
-        self.populate_tree()
-        self.update_progress()
-        self.write_welcome_message()
+        """Build the exercise tree on mount."""
+        self._build_tree()
+        self._write_welcome()
 
-    def write_welcome_message(self) -> None:
-        """Write welcome message to output."""
-        output = self.query_one("#test-output", RichLog)
-        output.write("[bold #d4a84b]" + "═" * 60 + "[/]")
-        output.write("[bold #d4a84b]⚙️  Welcome to Pytest Battle! ⚙️[/]")
-        output.write("[bold #d4a84b]" + "═" * 60 + "[/]")
-        output.write("")
-        output.write("[#e8dcc4]Select an exercise from the tree on the left,[/]")
-        output.write("[#e8dcc4]then press [bold]R[/] or click [bold]Run Tests[/] to test your solution.[/]")
-        output.write("")
-        output.write("[#b87333]Press [bold]H[/] for hints when you're stuck.[/]")
-        output.write("[#b87333]Press [bold]Q[/] to quit.[/]")
-        output.write("")
-        output.write("[dim #8b7355]May your gears turn smoothly! 🔧[/]")
-        output.write("")
-
-    def populate_tree(self) -> None:
-        """Populate the exercise tree."""
+    def _build_tree(self) -> None:
+        """Build exercise tree without checking status (fast!)."""
         tree = self.query_one("#exercise-tree", Tree)
         tree.clear()
         tree.root.expand()
 
         exercises_dir = get_exercises_dir()
+        levels = [
+            ("01_junior", "Junior"),
+            ("02_mid", "Mid"),
+            ("03_senior", "Senior"),
+        ]
 
-        level_names = {
-            "01_junior": ("🔩 Junior", "junior"),
-            "02_mid": ("⚙️  Mid", "mid"),
-            "03_senior": ("🔧 Senior", "senior"),
-        }
-
-        for level_dir in sorted(exercises_dir.iterdir()):
-            if not level_dir.is_dir():
+        for dir_name, display_name in levels:
+            level_path = exercises_dir / dir_name
+            if not level_path.exists():
                 continue
 
-            display_name, level_key = level_names.get(
-                level_dir.name,
-                (level_dir.name, "unknown")
-            )
-            level_node = tree.root.add(f"[bold]{display_name}[/]", expand=True)
-            level_node.data = {"type": "level", "path": level_dir}
+            level_node = tree.root.add(f"[bold cyan]{display_name}[/]", expand=True)
+            level_node.data = {"type": "level", "path": level_path, "name": display_name.lower()}
 
-            for ex_dir in sorted(level_dir.iterdir()):
-                if not ex_dir.is_dir() or not ex_dir.name.startswith("ex"):
-                    continue
+            for ex_dir in sorted(level_path.iterdir()):
+                if ex_dir.is_dir() and ex_dir.name.startswith("ex"):
+                    # Format: "ex01_variables" -> "01. Variables"
+                    parts = ex_dir.name.split("_", 1)
+                    num = parts[0][2:]  # Remove "ex" prefix
+                    name = parts[1].replace("_", " ").title() if len(parts) > 1 else ""
+                    label = f"{num}. {name}"
 
-                # Get status
-                status = get_exercise_status(ex_dir)
-                status_icon = STATUS_ICONS.get(status, "⏳")
+                    ex_node = level_node.add_leaf(f"[ ] {label}")
+                    ex_node.data = {
+                        "type": "exercise",
+                        "path": ex_dir,
+                        "level": display_name.lower(),
+                        "label": label,
+                    }
 
-                # Format exercise name
-                ex_name = ex_dir.name.replace("_", " ").title()
-
-                if status == "passed":
-                    label = f"[green]{status_icon} {ex_name}[/]"
-                else:
-                    label = f"[#e8dcc4]{status_icon} {ex_name}[/]"
-
-                ex_node = level_node.add_leaf(label)
-                ex_node.data = {
-                    "type": "exercise",
-                    "path": ex_dir,
-                    "level": level_key,
-                    "status": status,
-                }
-
-    def update_progress(self) -> None:
-        """Update progress bars."""
-        counts = count_exercises()
-
-        total_passed = 0
-        total_exercises = 0
-
-        for level, (passed, total) in counts.items():
-            total_passed += passed
-            total_exercises += total
-
-            progress_pct = (passed / total * 100) if total > 0 else 0
-
-            try:
-                widget_id = f"#{level}-progress"
-                progress_widget = self.query_one(widget_id, SteampunkProgressBar)
-                progress_widget.progress = progress_pct
-            except Exception:
-                pass
-
-        # Update overall progress text
-        overall_pct = (total_passed / total_exercises * 100) if total_exercises > 0 else 0
-        progress_text = self.query_one("#progress-text", Static)
-        progress_text.update(
-            f"[bold #d4a84b]⚡ Overall: {total_passed}/{total_exercises} ({overall_pct:.0f}%) ⚡[/]"
-        )
+    def _write_welcome(self) -> None:
+        """Write welcome message."""
+        log = self.query_one("#output-log", RichLog)
+        log.write("[bold cyan]━━━ Pytest Battle ━━━[/]")
+        log.write("")
+        log.write("Select an exercise from the tree, then:")
+        log.write("  [bold]R[/] - Run tests for selected exercise")
+        log.write("  [bold]H[/] - Show hints")
+        log.write("  [bold]A[/] - Run all exercises in selected level")
+        log.write("  [bold]Q[/] - Quit")
+        log.write("")
+        log.write("[dim]Status is checked when you run tests.[/]")
 
     @on(Tree.NodeSelected)
     def on_tree_select(self, event: Tree.NodeSelected) -> None:
-        """Handle tree node selection."""
+        """Handle exercise selection."""
         node = event.node
-        if node.data and node.data.get("type") == "exercise":
-            self.selected_exercise = node.data["path"]
+        if not node.data:
+            return
 
-            # Update info panel
-            info = self.query_one("#exercise-info", ExerciseInfo)
-            info.update_info(
-                name=node.data["path"].name,
-                level=node.data["level"],
-                status=node.data["status"],
-                description="Press R to run tests for this exercise.",
-            )
+        if node.data.get("type") == "exercise":
+            self.selected_path = node.data["path"]
+            self.selected_level = node.data["level"]
 
-    @on(Button.Pressed, "#run-btn")
-    def on_run_button(self) -> None:
-        """Handle run button press."""
+            title = self.query_one("#info-title", Static)
+            text = self.query_one("#info-text", Static)
+
+            title.update(f"Selected: {node.data['label']}")
+            text.update(f"Level: {self.selected_level.upper()} | Press R to run tests")
+
+        elif node.data.get("type") == "level":
+            self.selected_path = node.data["path"]
+            self.selected_level = node.data["name"]
+
+            title = self.query_one("#info-title", Static)
+            text = self.query_one("#info-text", Static)
+
+            title.update(f"Level: {node.data['name'].upper()}")
+            text.update("Press A to run all exercises in this level")
+
+    @on(Button.Pressed, "#btn-run")
+    def on_btn_run(self) -> None:
         self.action_run_tests()
 
-    @on(Button.Pressed, "#hint-btn")
-    def on_hint_button(self) -> None:
-        """Handle hint button press."""
+    @on(Button.Pressed, "#btn-hint")
+    def on_btn_hint(self) -> None:
         self.action_show_hint()
 
-    @on(Button.Pressed, "#refresh-btn")
-    def on_refresh_button(self) -> None:
-        """Handle refresh button press."""
-        self.action_refresh()
+    @on(Button.Pressed, "#btn-all")
+    def on_btn_all(self) -> None:
+        self.action_run_all()
 
     def action_run_tests(self) -> None:
         """Run tests for selected exercise."""
-        if not self.selected_exercise:
-            output = self.query_one("#test-output", RichLog)
-            output.write("[bold #f44336]⚠️ No exercise selected![/]")
-            output.write("[#e8dcc4]Select an exercise from the tree first.[/]")
+        if not self.selected_path:
+            log = self.query_one("#output-log", RichLog)
+            log.write("[red]No exercise selected![/]")
             return
 
-        self.run_tests_worker()
+        if self.selected_path.is_dir() and not any(self.selected_path.glob("test_*.py")):
+            # It's a level directory, not an exercise
+            log = self.query_one("#output-log", RichLog)
+            log.write("[yellow]Select a specific exercise, or press A to run all.[/]")
+            return
+
+        self._run_tests_async(self.selected_path)
 
     @work(exclusive=True, thread=True)
-    def run_tests_worker(self) -> None:
-        """Run tests in a worker thread."""
-        if not self.selected_exercise:
-            return
+    def _run_tests_async(self, path: Path) -> None:
+        """Run tests in background thread."""
+        self.call_from_thread(self._log_running, path.name)
 
-        exercise_path = self.selected_exercise
+        stdout, stderr, code = run_tests(path)
 
-        # Update UI to show running
-        self.call_from_thread(self._show_running, exercise_path.name)
+        self.call_from_thread(self._log_results, stdout, stderr, code, path)
 
-        # Run tests
-        stdout, stderr, returncode = run_exercise_tests(exercise_path)
+    def _log_running(self, name: str) -> None:
+        """Show running message."""
+        log = self.query_one("#output-log", RichLog)
+        log.clear()
+        log.write(f"[cyan]Running tests for {name}...[/]")
+        log.write("")
 
-        # Update UI with results
-        self.call_from_thread(self._show_results, stdout, stderr, returncode)
+    def _log_results(self, stdout: str, stderr: str, code: int, path: Path) -> None:
+        """Show test results and update tree."""
+        log = self.query_one("#output-log", RichLog)
+        log.clear()
 
-        # Refresh progress
-        self.call_from_thread(self.update_progress)
-        self.call_from_thread(self.populate_tree)
-
-    def _show_running(self, name: str) -> None:
-        """Show running status in output."""
-        output = self.query_one("#test-output", RichLog)
-        output.clear()
-        output.write(f"[bold #d4a84b]⚙️ ═══ Running tests for {name} ═══ ⚙️[/]")
-        output.write("")
-        output.write("[#b87333]🔄 Steam engines warming up...[/]")
-        output.write("")
-
-    def _show_results(self, stdout: str, stderr: str, returncode: int) -> None:
-        """Show test results in output."""
-        output = self.query_one("#test-output", RichLog)
-        output.clear()
-
-        if returncode == 0:
-            output.write("[bold #4caf50]" + "═" * 50 + "[/]")
-            output.write("[bold #4caf50]✅ ALL TESTS PASSED! ⚙️[/]")
-            output.write("[bold #4caf50]" + "═" * 50 + "[/]")
+        if code == 0:
+            log.write("[bold green]━━━ ALL TESTS PASSED ━━━[/]")
+            status_mark = "[green][✓][/]"
         else:
-            output.write("[bold #f44336]" + "═" * 50 + "[/]")
-            output.write("[bold #f44336]❌ SOME TESTS FAILED[/]")
-            output.write("[bold #f44336]" + "═" * 50 + "[/]")
+            log.write("[bold red]━━━ TESTS FAILED ━━━[/]")
+            status_mark = "[red][✗][/]"
 
-        output.write("")
+        log.write("")
 
-        if stdout:
-            for line in stdout.split("\n"):
-                # Color code the output
-                if "PASSED" in line:
-                    output.write(f"[#4caf50]{line}[/]")
-                elif "FAILED" in line:
-                    output.write(f"[#f44336]{line}[/]")
-                elif "ERROR" in line:
-                    output.write(f"[#ff9800]{line}[/]")
-                elif line.startswith("="):
-                    output.write(f"[#d4a84b]{line}[/]")
-                else:
-                    output.write(f"[#e8dcc4]{line}[/]")
+        # Color-code output
+        for line in stdout.split("\n"):
+            if not line.strip():
+                continue
+            if "PASSED" in line:
+                log.write(f"[green]{line}[/]")
+            elif "FAILED" in line:
+                log.write(f"[red]{line}[/]")
+            elif "ERROR" in line:
+                log.write(f"[yellow]{line}[/]")
+            elif line.startswith("="):
+                log.write(f"[dim]{line}[/]")
+            else:
+                log.write(line)
 
         if stderr:
-            output.write("")
-            output.write("[bold #ff9800]⚠️ Errors:[/]")
-            output.write(f"[#ff9800]{stderr}[/]")
+            log.write("")
+            log.write(f"[yellow]{stderr}[/]")
+
+        # Update tree node with status
+        self._update_tree_status(path, status_mark)
+
+    def _update_tree_status(self, path: Path, status: str) -> None:
+        """Update the tree node label with pass/fail status."""
+        tree = self.query_one("#exercise-tree", Tree)
+
+        def update_node(node):
+            if node.data and node.data.get("path") == path:
+                label = node.data.get("label", path.name)
+                node.set_label(f"{status} {label}")
+                return True
+            for child in node.children:
+                if update_node(child):
+                    return True
+            return False
+
+        update_node(tree.root)
 
     def action_show_hint(self) -> None:
         """Show hint for selected exercise."""
-        if not self.selected_exercise:
-            output = self.query_one("#test-output", RichLog)
-            output.write("[bold #f44336]⚠️ No exercise selected![/]")
+        log = self.query_one("#output-log", RichLog)
+
+        if not self.selected_path or not self.selected_path.is_dir():
+            log.write("[red]No exercise selected![/]")
             return
 
-        hint_path = self.selected_exercise / "HINT.md"
-        output = self.query_one("#test-output", RichLog)
-        output.clear()
+        # Find hint file
+        hint_path = self.selected_path / "HINT.md"
+        if not hint_path.exists():
+            log.write("[yellow]No hint available for this exercise.[/]")
+            return
 
-        if hint_path.exists():
-            output.write("[bold #d4a84b]" + "═" * 50 + "[/]")
-            output.write(f"[bold #d4a84b]💡 HINT for {self.selected_exercise.name}[/]")
-            output.write("[bold #d4a84b]" + "═" * 50 + "[/]")
-            output.write("")
+        log.clear()
+        log.write(f"[bold cyan]━━━ HINT: {self.selected_path.name} ━━━[/]")
+        log.write("")
 
-            content = hint_path.read_text()
-            for line in content.split("\n"):
-                if line.startswith("#"):
-                    output.write(f"[bold #b87333]{line}[/]")
-                elif line.startswith("```"):
-                    output.write(f"[#8b7355]{line}[/]")
-                else:
-                    output.write(f"[#e8dcc4]{line}[/]")
+        content = hint_path.read_text()
+        for line in content.split("\n"):
+            if line.startswith("## "):
+                log.write(f"[bold yellow]{line}[/]")
+            elif line.startswith("# "):
+                log.write(f"[bold cyan]{line}[/]")
+            elif line.startswith("```"):
+                log.write(f"[dim]{line}[/]")
+            else:
+                log.write(line)
+
+    def action_run_all(self) -> None:
+        """Run all exercises in the selected level."""
+        if not self.selected_path:
+            log = self.query_one("#output-log", RichLog)
+            log.write("[red]No level selected![/]")
+            return
+
+        # Find the level directory
+        if self.selected_path.name.startswith("ex"):
+            level_dir = self.selected_path.parent
         else:
-            output.write("[#f44336]No hint available for this exercise.[/]")
+            level_dir = self.selected_path
 
-    def action_refresh(self) -> None:
-        """Refresh the exercise tree and progress."""
-        output = self.query_one("#test-output", RichLog)
-        output.clear()
-        output.write("[#d4a84b]🔄 Refreshing...[/]")
+        self._run_level_async(level_dir)
 
-        self.populate_tree()
-        self.update_progress()
+    @work(exclusive=True, thread=True)
+    def _run_level_async(self, level_dir: Path) -> None:
+        """Run all exercises in a level."""
+        exercises = sorted([d for d in level_dir.iterdir() if d.is_dir() and d.name.startswith("ex")])
 
-        output.write("[#4caf50]✅ Refreshed![/]")
+        self.call_from_thread(self._log_level_start, level_dir.name, len(exercises))
 
-    def action_go_back(self) -> None:
-        """Clear selection."""
-        self.selected_exercise = None
+        passed = 0
+        failed = 0
 
+        for ex_path in exercises:
+            self.call_from_thread(self._log_exercise_running, ex_path.name)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ENTRY POINT
-# ══════════════════════════════════════════════════════════════════════════════
+            stdout, stderr, code = run_tests(ex_path)
+
+            if code == 0:
+                passed += 1
+                status = "[green][✓][/]"
+                self.call_from_thread(self._log_exercise_result, ex_path.name, "PASSED", True)
+            else:
+                failed += 1
+                status = "[red][✗][/]"
+                self.call_from_thread(self._log_exercise_result, ex_path.name, "FAILED", False)
+
+            self.call_from_thread(self._update_tree_status, ex_path, status)
+
+        self.call_from_thread(self._log_level_summary, passed, failed)
+
+    def _log_level_start(self, name: str, count: int) -> None:
+        log = self.query_one("#output-log", RichLog)
+        log.clear()
+        log.write(f"[bold cyan]━━━ Running {count} exercises in {name} ━━━[/]")
+        log.write("")
+
+    def _log_exercise_running(self, name: str) -> None:
+        log = self.query_one("#output-log", RichLog)
+        log.write(f"[dim]Testing {name}...[/]")
+
+    def _log_exercise_result(self, name: str, result: str, passed: bool) -> None:
+        log = self.query_one("#output-log", RichLog)
+        # Remove the "Testing..." line and add result
+        color = "green" if passed else "red"
+        log.write(f"[{color}]{name}: {result}[/]")
+
+    def _log_level_summary(self, passed: int, failed: int) -> None:
+        log = self.query_one("#output-log", RichLog)
+        log.write("")
+        log.write(f"[bold]━━━ Summary ━━━[/]")
+        log.write(f"[green]Passed: {passed}[/]")
+        log.write(f"[red]Failed: {failed}[/]")
+
+        total = passed + failed
+        pct = (passed / total * 100) if total > 0 else 0
+        log.write(f"[cyan]Progress: {pct:.0f}%[/]")
+
 
 def main() -> None:
-    """Run the Pytest Battle TUI."""
+    """Run the TUI."""
     app = PytestBattleTUI()
     app.run()
 
