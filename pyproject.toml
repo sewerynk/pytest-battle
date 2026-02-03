@@ -28,10 +28,12 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-xdist>=3.5.0",
     "pytest-asyncio>=0.23.0",
+    "textual>=0.50.0",
 ]
 
 [project.scripts]
 battle = "pytest_battle.cli:main"
+battle-tui = "pytest_battle.tui:main"
 
 [build-system]
 requires = ["hatchling"]
