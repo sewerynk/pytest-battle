@@ -67,6 +67,27 @@ uv run battle verify
 uv run battle hint ex01_variables
 ```
 
+### 6. Launch the Steampunk TUI
+
+```bash
+uv run battle-tui
+```
+
+This launches an interactive terminal interface with:
+- **Steam-powered aesthetics** - Brass, copper, and industrial elegance
+- **Exercise browser** - Navigate all levels and exercises
+- **Live test running** - See results in real-time
+- **Progress gauges** - Track your advancement
+- **Hint viewer** - Get help when stuck
+
+**TUI Controls:**
+| Key | Action |
+|-----|--------|
+| `R` | Run tests for selected exercise |
+| `H` | Show hint |
+| `F` | Refresh progress |
+| `Q` | Quit |
+
 ## How to Solve Exercises
 
 1. **Navigate** to an exercise folder (e.g., `exercises/01_junior/ex01_variables/`)
