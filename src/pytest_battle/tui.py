@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  ⚙️  P Y T E S T - B A T T L E  ⚙️                                            ║
-║     ═══════════════════════════                                               ║
-║     A Steampunk-Powered Python Learning Engine                                ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-
-Steampunk TUI for pytest-battle - an interactive terminal interface
+Simple TUI for pytest-battle - an interactive terminal interface
 for learning Python through exercises.
 """
 
@@ -18,119 +12,26 @@ from typing import ClassVar
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
+from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import (
     Button,
     Footer,
     Header,
     Label,
-    ListItem,
-    ListView,
     ProgressBar,
     RichLog,
-    Rule,
     Static,
     Tree,
 )
 from textual.widgets.tree import TreeNode
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# STEAMPUNK ASCII ART & DECORATIONS
-# ══════════════════════════════════════════════════════════════════════════════
-
-GEAR_SMALL = """⚙"""
-
-GEAR_LARGE = """
-    ▄▄▄▄▄▄▄
-  ▄█ ═══ █▄
- █ ╔═════╗ █
-█══╣ ⚙⚙⚙ ╠══█
- █ ╚═════╝ █
-  ▀█ ═══ █▀
-    ▀▀▀▀▀▀▀
-"""
-
-BANNER = """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║   ⚙️ ═══════════════════════════════════════════════════════════════════ ⚙️   ║
-║   ║                                                                      ║   ║
-║   ║   ██████╗ ██╗   ██╗████████╗███████╗███████╗████████╗               ║   ║
-║   ║   ██╔══██╗╚██╗ ██╔╝╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝               ║   ║
-║   ║   ██████╔╝ ╚████╔╝    ██║   █████╗  ███████╗   ██║                  ║   ║
-║   ║   ██╔═══╝   ╚██╔╝     ██║   ██╔══╝  ╚════██║   ██║                  ║   ║
-║   ║   ██║        ██║      ██║   ███████╗███████║   ██║                  ║   ║
-║   ║   ╚═╝        ╚═╝      ╚═╝   ╚══════╝╚══════╝   ╚═╝                  ║   ║
-║   ║                                                                      ║   ║
-║   ║   ██████╗  █████╗ ████████╗████████╗██╗     ███████╗                ║   ║
-║   ║   ██╔══██╗██╔══██╗╚══██╔══╝╚══██╔══╝██║     ██╔════╝                ║   ║
-║   ║   ██████╔╝███████║   ██║      ██║   ██║     █████╗                  ║   ║
-║   ║   ██╔══██╗██╔══██║   ██║      ██║   ██║     ██╔══╝                  ║   ║
-║   ║   ██████╔╝██║  ██║   ██║      ██║   ███████╗███████╗                ║   ║
-║   ║   ╚═════╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝                ║   ║
-║   ║                                                                      ║   ║
-║   ⚙️ ═══════════════════════════════════════════════════════════════════ ⚙️   ║
-║                                                                              ║
-║        ⚡ A Steam-Powered Python Learning Engine ⚡                          ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-"""
-
-MINI_BANNER = """⚙️ ══ PYTEST-BATTLE ══ ⚙️"""
-
-LEVEL_ICONS = {
-    "junior": "🔩",  # Bolt/screw for beginners
-    "mid": "⚙️",      # Gear for intermediate
-    "senior": "🔧",   # Wrench for advanced
-}
-
-STATUS_ICONS = {
-    "passed": "✅",
-    "failed": "❌",
-    "pending": "⏳",
-    "running": "🔄",
-}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STEAMPUNK CSS THEME
-# ══════════════════════════════════════════════════════════════════════════════
-
-STEAMPUNK_CSS = """
-/* ═══════════════════════════════════════════════════════════════════════════
-   STEAMPUNK THEME - Brass, Copper, and Industrial Elegance
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-$brass: #d4a84b;
-$copper: #b87333;
-$bronze: #cd7f32;
-$rust: #8b4513;
-$dark-metal: #2d2d2d;
-$steam: #e8dcc4;
-$coal: #1a1a1a;
-$rivet: #8b7355;
-
+# Simple CSS theme using Textual defaults
+SIMPLE_CSS = """
 Screen {
-    background: $coal;
+    background: $surface;
 }
-
-Header {
-    background: $rust;
-    color: $steam;
-    text-style: bold;
-    border-bottom: thick $brass;
-}
-
-Footer {
-    background: $dark-metal;
-    color: $brass;
-    border-top: thick $copper;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTAINERS
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 #main-container {
     layout: horizontal;
@@ -139,83 +40,21 @@ Footer {
 
 #sidebar {
     width: 40;
-    border-right: thick $brass;
-    background: $dark-metal;
+    border-right: solid $primary;
 }
 
 #content {
     width: 1fr;
-    background: $coal;
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PANELS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.panel {
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
-    padding: 1;
-}
-
-.panel-title {
-    text-align: center;
-    text-style: bold;
-    color: $brass;
-    background: $rust;
-    padding: 1;
-    margin-bottom: 1;
-    border: solid $copper;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXERCISE TREE
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 #exercise-tree {
-    background: $dark-metal;
-    scrollbar-color: $brass;
-    scrollbar-color-hover: $copper;
-    scrollbar-color-active: $bronze;
-}
-
-Tree {
-    background: transparent;
+    height: 1fr;
     padding: 1;
 }
-
-Tree > .tree--guides {
-    color: $rivet;
-}
-
-Tree > .tree--cursor {
-    background: $rust;
-    color: $steam;
-    text-style: bold;
-}
-
-Tree > .tree--highlight {
-    background: $copper 30%;
-}
-
-TreeNode {
-    color: $steam;
-}
-
-TreeNode:hover {
-    background: $copper 20%;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PROGRESS SECTION
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 #progress-section {
     height: auto;
-    max-height: 12;
-    border: thick $copper;
-    background: $dark-metal;
+    border: solid $primary;
     margin: 1;
     padding: 1;
 }
@@ -223,7 +62,6 @@ TreeNode:hover {
 #progress-title {
     text-align: center;
     text-style: bold;
-    color: $brass;
     margin-bottom: 1;
 }
 
@@ -234,129 +72,15 @@ TreeNode:hover {
 
 .progress-label {
     width: 15;
-    color: $steam;
 }
 
 ProgressBar {
     width: 1fr;
-    padding-right: 1;
-}
-
-ProgressBar > .bar--bar {
-    color: $brass;
-    background: $coal;
-}
-
-ProgressBar > .bar--complete {
-    color: $bronze;
 }
 
 #progress-text {
     text-align: center;
-    color: $copper;
-    text-style: italic;
     margin-top: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TEST OUTPUT LOG
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#output-section {
-    height: 1fr;
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
-}
-
-#output-title {
-    text-align: center;
-    text-style: bold;
-    color: $brass;
-    background: $rust;
-    padding: 1;
-    border-bottom: solid $copper;
-}
-
-#test-output {
-    background: $coal;
-    color: $steam;
-    padding: 1;
-    scrollbar-color: $brass;
-    scrollbar-color-hover: $copper;
-}
-
-RichLog {
-    background: transparent;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXERCISE INFO PANEL
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#info-section {
-    height: auto;
-    max-height: 15;
-    border: thick $copper;
-    background: $dark-metal;
-    margin: 1;
-    padding: 1;
-}
-
-#info-title {
-    text-align: center;
-    text-style: bold;
-    color: $brass;
-    margin-bottom: 1;
-}
-
-#info-content {
-    color: $steam;
-    padding: 1;
-}
-
-.info-label {
-    color: $copper;
-    text-style: bold;
-}
-
-.info-value {
-    color: $steam;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BUTTONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-Button {
-    background: $rust;
-    color: $steam;
-    border: tall $brass;
-    margin: 1;
-    min-width: 16;
-}
-
-Button:hover {
-    background: $copper;
-    border: tall $bronze;
-}
-
-Button:focus {
-    background: $bronze;
-    border: tall $brass;
-    text-style: bold;
-}
-
-Button.-primary {
-    background: $copper;
-}
-
-Button.-success {
-    background: #2e7d32;
-}
-
-Button.-warning {
-    background: $rust;
 }
 
 #button-bar {
@@ -365,90 +89,48 @@ Button.-warning {
     margin: 1;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   STATUS INDICATORS
-   ═══════════════════════════════════════════════════════════════════════════ */
+Button {
+    margin: 0 1;
+}
 
-.status-passed {
-    color: #4caf50;
+#info-section {
+    height: auto;
+    max-height: 15;
+    border: solid $primary;
+    margin: 1;
+    padding: 1;
+}
+
+#info-title {
+    text-align: center;
     text-style: bold;
+    margin-bottom: 1;
 }
 
-.status-failed {
-    color: #f44336;
+#info-content {
+    padding: 1;
+}
+
+#output-section {
+    height: 1fr;
+    border: solid $primary;
+    margin: 1;
+}
+
+#output-title {
+    text-align: center;
     text-style: bold;
+    padding: 1;
+    border-bottom: solid $primary;
 }
 
-.status-pending {
-    color: $brass;
-}
-
-.status-running {
-    color: $copper;
-    text-style: italic;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   DECORATIVE ELEMENTS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.gear-decoration {
-    color: $brass;
-    text-align: center;
-}
-
-.divider {
-    color: $copper;
-    margin: 1 0;
-}
-
-Rule {
-    color: $copper;
-    margin: 1 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WELCOME SCREEN
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-#welcome-container {
-    align: center middle;
-    width: 100%;
-    height: 100%;
-}
-
-#welcome-banner {
-    color: $brass;
-    text-align: center;
-    padding: 2;
-}
-
-#welcome-subtitle {
-    color: $copper;
-    text-align: center;
-    text-style: italic;
-    margin-top: 2;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LOADING INDICATOR
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.loading {
-    color: $brass;
-    text-style: italic;
-}
-
-.spinning-gear {
-    color: $copper;
+#test-output {
+    padding: 1;
 }
 """
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS
-# ══════════════════════════════════════════════════════════════════════════════
-
+# Helper functions
 def get_exercises_dir() -> Path:
     """Get the exercises directory."""
     return Path(__file__).parent.parent.parent / "exercises"
@@ -480,9 +162,9 @@ def run_exercise_tests(exercise_path: Path) -> tuple[str, str, int]:
         )
         return result.stdout, result.stderr, result.returncode
     except subprocess.TimeoutExpired:
-        return "", "⚠️ Test execution timed out!", 1
+        return "", "Test execution timed out!", 1
     except Exception as e:
-        return "", f"⚠️ Error running tests: {e}", 1
+        return "", f"Error running tests: {e}", 1
 
 
 def count_exercises() -> dict[str, tuple[int, int]]:
@@ -509,45 +191,7 @@ def count_exercises() -> dict[str, tuple[int, int]]:
     return counts
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CUSTOM WIDGETS
-# ══════════════════════════════════════════════════════════════════════════════
-
-class GearDecoration(Static):
-    """A decorative gear widget."""
-
-    def __init__(self, size: str = "small", **kwargs):
-        super().__init__(**kwargs)
-        self.gear_size = size
-
-    def compose(self) -> ComposeResult:
-        if self.gear_size == "large":
-            yield Static(GEAR_LARGE, classes="gear-decoration")
-        else:
-            yield Static("⚙️", classes="gear-decoration")
-
-
-class SteampunkProgressBar(Static):
-    """A steampunk-styled progress indicator."""
-
-    progress = reactive(0.0)
-    label = reactive("")
-
-    def __init__(self, label: str = "", **kwargs):
-        super().__init__(**kwargs)
-        self.label = label
-
-    def compose(self) -> ComposeResult:
-        with Horizontal(classes="progress-row"):
-            yield Label(f"{self.label}:", classes="progress-label")
-            yield ProgressBar(total=100, show_eta=False)
-
-    def watch_progress(self, value: float) -> None:
-        """Update progress bar when progress changes."""
-        bar = self.query_one(ProgressBar)
-        bar.update(progress=value)
-
-
+# Custom widgets
 class ExerciseInfo(Static):
     """Display information about selected exercise."""
 
@@ -558,7 +202,7 @@ class ExerciseInfo(Static):
         self.exercise_status = "pending"
 
     def compose(self) -> ComposeResult:
-        yield Static("⚙️ ═══ EXERCISE INFO ═══ ⚙️", id="info-title")
+        yield Static("Exercise Info", id="info-title")
         yield Static("Select an exercise to view details", id="info-content")
 
     def update_info(self, name: str, level: str, status: str, description: str = ""):
@@ -567,14 +211,12 @@ class ExerciseInfo(Static):
         self.exercise_level = level
         self.exercise_status = status
 
-        level_icon = LEVEL_ICONS.get(level, "⚙️")
-        status_icon = STATUS_ICONS.get(status, "⏳")
+        status_symbol = "✓" if status == "passed" else "○"
 
-        content = f"""
-[bold]{level_icon} {name}[/bold]
+        content = f"""[bold]{name}[/bold]
 
-[dim]Level:[/dim] {level.upper()}
-[dim]Status:[/dim] {status_icon} {status.upper()}
+Level: {level.upper()}
+Status: {status_symbol} {status.upper()}
 
 {description}
         """.strip()
@@ -582,23 +224,18 @@ class ExerciseInfo(Static):
         self.query_one("#info-content", Static).update(content)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN TUI APPLICATION
-# ══════════════════════════════════════════════════════════════════════════════
-
+# Main TUI Application
 class PytestBattleTUI(App):
     """The main Pytest Battle TUI application."""
 
-    TITLE = "⚙️ Pytest Battle ⚙️"
-    SUB_TITLE = "Steam-Powered Python Learning"
-    CSS = STEAMPUNK_CSS
+    TITLE = "Pytest Battle"
+    CSS = SIMPLE_CSS
 
     BINDINGS: ClassVar[list[Binding]] = [
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "run_tests", "Run Tests", show=True),
         Binding("h", "show_hint", "Show Hint", show=True),
         Binding("f", "refresh", "Refresh", show=True),
-        Binding("escape", "go_back", "Back", show=False),
     ]
 
     selected_exercise: reactive[Path | None] = reactive(None)
@@ -609,24 +246,33 @@ class PytestBattleTUI(App):
         with Horizontal(id="main-container"):
             # Left sidebar with exercise tree
             with Vertical(id="sidebar"):
-                yield Static("⚙️ ═══ EXERCISES ═══ ⚙️", classes="panel-title")
-                yield Tree("📚 Levels", id="exercise-tree")
+                yield Tree("Exercises", id="exercise-tree")
 
             # Right content area
             with Vertical(id="content"):
                 # Progress section
                 with Vertical(id="progress-section"):
-                    yield Static("⚙️ ═══ STEAM PRESSURE GAUGES ═══ ⚙️", id="progress-title")
-                    yield SteampunkProgressBar(label="🔩 Junior", id="junior-progress")
-                    yield SteampunkProgressBar(label="⚙️  Mid", id="mid-progress")
-                    yield SteampunkProgressBar(label="🔧 Senior", id="senior-progress")
+                    yield Static("Progress", id="progress-title")
+
+                    with Horizontal(classes="progress-row"):
+                        yield Label("Junior:", classes="progress-label")
+                        yield ProgressBar(total=100, show_eta=False, id="junior-progress")
+
+                    with Horizontal(classes="progress-row"):
+                        yield Label("Mid:", classes="progress-label")
+                        yield ProgressBar(total=100, show_eta=False, id="mid-progress")
+
+                    with Horizontal(classes="progress-row"):
+                        yield Label("Senior:", classes="progress-label")
+                        yield ProgressBar(total=100, show_eta=False, id="senior-progress")
+
                     yield Static("", id="progress-text")
 
                 # Button bar
                 with Horizontal(id="button-bar"):
-                    yield Button("▶️ Run Tests", id="run-btn", variant="primary")
-                    yield Button("💡 Hint", id="hint-btn", variant="warning")
-                    yield Button("🔄 Refresh", id="refresh-btn")
+                    yield Button("Run Tests", id="run-btn", variant="primary")
+                    yield Button("Hint", id="hint-btn")
+                    yield Button("Refresh", id="refresh-btn")
 
                 # Exercise info
                 with Vertical(id="info-section"):
@@ -634,7 +280,7 @@ class PytestBattleTUI(App):
 
                 # Test output
                 with Vertical(id="output-section"):
-                    yield Static("⚙️ ═══ STEAM CONSOLE OUTPUT ═══ ⚙️", id="output-title")
+                    yield Static("Test Output", id="output-title")
                     yield RichLog(id="test-output", highlight=True, markup=True)
 
         yield Footer()
@@ -648,17 +294,15 @@ class PytestBattleTUI(App):
     def write_welcome_message(self) -> None:
         """Write welcome message to output."""
         output = self.query_one("#test-output", RichLog)
-        output.write("[bold #d4a84b]" + "═" * 60 + "[/]")
-        output.write("[bold #d4a84b]⚙️  Welcome to Pytest Battle! ⚙️[/]")
-        output.write("[bold #d4a84b]" + "═" * 60 + "[/]")
+        output.write("=" * 60)
+        output.write("Welcome to Pytest Battle!")
+        output.write("=" * 60)
         output.write("")
-        output.write("[#e8dcc4]Select an exercise from the tree on the left,[/]")
-        output.write("[#e8dcc4]then press [bold]R[/] or click [bold]Run Tests[/] to test your solution.[/]")
+        output.write("Select an exercise from the tree on the left,")
+        output.write("then press R or click Run Tests to test your solution.")
         output.write("")
-        output.write("[#b87333]Press [bold]H[/] for hints when you're stuck.[/]")
-        output.write("[#b87333]Press [bold]Q[/] to quit.[/]")
-        output.write("")
-        output.write("[dim #8b7355]May your gears turn smoothly! 🔧[/]")
+        output.write("Press H for hints when you're stuck.")
+        output.write("Press Q to quit.")
         output.write("")
 
     def populate_tree(self) -> None:
@@ -670,9 +314,9 @@ class PytestBattleTUI(App):
         exercises_dir = get_exercises_dir()
 
         level_names = {
-            "01_junior": ("🔩 Junior", "junior"),
-            "02_mid": ("⚙️  Mid", "mid"),
-            "03_senior": ("🔧 Senior", "senior"),
+            "01_junior": ("Junior", "junior"),
+            "02_mid": ("Mid", "mid"),
+            "03_senior": ("Senior", "senior"),
         }
 
         for level_dir in sorted(exercises_dir.iterdir()):
@@ -692,15 +336,15 @@ class PytestBattleTUI(App):
 
                 # Get status
                 status = get_exercise_status(ex_dir)
-                status_icon = STATUS_ICONS.get(status, "⏳")
+                status_symbol = "✓" if status == "passed" else "○"
 
                 # Format exercise name
                 ex_name = ex_dir.name.replace("_", " ").title()
 
                 if status == "passed":
-                    label = f"[green]{status_icon} {ex_name}[/]"
+                    label = f"[green]{status_symbol} {ex_name}[/]"
                 else:
-                    label = f"[#e8dcc4]{status_icon} {ex_name}[/]"
+                    label = f"{status_symbol} {ex_name}"
 
                 ex_node = level_node.add_leaf(label)
                 ex_node.data = {
@@ -724,9 +368,9 @@ class PytestBattleTUI(App):
             progress_pct = (passed / total * 100) if total > 0 else 0
 
             try:
-                widget_id = f"#{level}-progress"
-                progress_widget = self.query_one(widget_id, SteampunkProgressBar)
-                progress_widget.progress = progress_pct
+                widget_id = f"{level}-progress"
+                progress_widget = self.query_one(f"#{widget_id}", ProgressBar)
+                progress_widget.update(progress=progress_pct)
             except Exception:
                 pass
 
@@ -734,7 +378,7 @@ class PytestBattleTUI(App):
         overall_pct = (total_passed / total_exercises * 100) if total_exercises > 0 else 0
         progress_text = self.query_one("#progress-text", Static)
         progress_text.update(
-            f"[bold #d4a84b]⚡ Overall: {total_passed}/{total_exercises} ({overall_pct:.0f}%) ⚡[/]"
+            f"Overall: {total_passed}/{total_exercises} ({overall_pct:.0f}%)"
         )
 
     @on(Tree.NodeSelected)
@@ -772,8 +416,8 @@ class PytestBattleTUI(App):
         """Run tests for selected exercise."""
         if not self.selected_exercise:
             output = self.query_one("#test-output", RichLog)
-            output.write("[bold #f44336]⚠️ No exercise selected![/]")
-            output.write("[#e8dcc4]Select an exercise from the tree first.[/]")
+            output.write("[bold red]No exercise selected![/]")
+            output.write("Select an exercise from the tree first.")
             return
 
         self.run_tests_worker()
@@ -803,9 +447,9 @@ class PytestBattleTUI(App):
         """Show running status in output."""
         output = self.query_one("#test-output", RichLog)
         output.clear()
-        output.write(f"[bold #d4a84b]⚙️ ═══ Running tests for {name} ═══ ⚙️[/]")
+        output.write(f"[bold]Running tests for {name}[/]")
         output.write("")
-        output.write("[#b87333]🔄 Steam engines warming up...[/]")
+        output.write("Running...")
         output.write("")
 
     def _show_results(self, stdout: str, stderr: str, returncode: int) -> None:
@@ -814,13 +458,13 @@ class PytestBattleTUI(App):
         output.clear()
 
         if returncode == 0:
-            output.write("[bold #4caf50]" + "═" * 50 + "[/]")
-            output.write("[bold #4caf50]✅ ALL TESTS PASSED! ⚙️[/]")
-            output.write("[bold #4caf50]" + "═" * 50 + "[/]")
+            output.write("[bold green]" + "=" * 50 + "[/]")
+            output.write("[bold green]ALL TESTS PASSED![/]")
+            output.write("[bold green]" + "=" * 50 + "[/]")
         else:
-            output.write("[bold #f44336]" + "═" * 50 + "[/]")
-            output.write("[bold #f44336]❌ SOME TESTS FAILED[/]")
-            output.write("[bold #f44336]" + "═" * 50 + "[/]")
+            output.write("[bold red]" + "=" * 50 + "[/]")
+            output.write("[bold red]SOME TESTS FAILED[/]")
+            output.write("[bold red]" + "=" * 50 + "[/]")
 
         output.write("")
 
@@ -828,26 +472,24 @@ class PytestBattleTUI(App):
             for line in stdout.split("\n"):
                 # Color code the output
                 if "PASSED" in line:
-                    output.write(f"[#4caf50]{line}[/]")
+                    output.write(f"[green]{line}[/]")
                 elif "FAILED" in line:
-                    output.write(f"[#f44336]{line}[/]")
+                    output.write(f"[red]{line}[/]")
                 elif "ERROR" in line:
-                    output.write(f"[#ff9800]{line}[/]")
-                elif line.startswith("="):
-                    output.write(f"[#d4a84b]{line}[/]")
+                    output.write(f"[yellow]{line}[/]")
                 else:
-                    output.write(f"[#e8dcc4]{line}[/]")
+                    output.write(line)
 
         if stderr:
             output.write("")
-            output.write("[bold #ff9800]⚠️ Errors:[/]")
-            output.write(f"[#ff9800]{stderr}[/]")
+            output.write("[bold yellow]Errors:[/]")
+            output.write(f"[yellow]{stderr}[/]")
 
     def action_show_hint(self) -> None:
         """Show hint for selected exercise."""
         if not self.selected_exercise:
             output = self.query_one("#test-output", RichLog)
-            output.write("[bold #f44336]⚠️ No exercise selected![/]")
+            output.write("[bold red]No exercise selected![/]")
             return
 
         hint_path = self.selected_exercise / "HINT.md"
@@ -855,42 +497,33 @@ class PytestBattleTUI(App):
         output.clear()
 
         if hint_path.exists():
-            output.write("[bold #d4a84b]" + "═" * 50 + "[/]")
-            output.write(f"[bold #d4a84b]💡 HINT for {self.selected_exercise.name}[/]")
-            output.write("[bold #d4a84b]" + "═" * 50 + "[/]")
+            output.write("=" * 50)
+            output.write(f"[bold]HINT for {self.selected_exercise.name}[/]")
+            output.write("=" * 50)
             output.write("")
 
             content = hint_path.read_text()
             for line in content.split("\n"):
                 if line.startswith("#"):
-                    output.write(f"[bold #b87333]{line}[/]")
-                elif line.startswith("```"):
-                    output.write(f"[#8b7355]{line}[/]")
+                    output.write(f"[bold]{line}[/]")
                 else:
-                    output.write(f"[#e8dcc4]{line}[/]")
+                    output.write(line)
         else:
-            output.write("[#f44336]No hint available for this exercise.[/]")
+            output.write("[red]No hint available for this exercise.[/]")
 
     def action_refresh(self) -> None:
         """Refresh the exercise tree and progress."""
         output = self.query_one("#test-output", RichLog)
         output.clear()
-        output.write("[#d4a84b]🔄 Refreshing...[/]")
+        output.write("Refreshing...")
 
         self.populate_tree()
         self.update_progress()
 
-        output.write("[#4caf50]✅ Refreshed![/]")
-
-    def action_go_back(self) -> None:
-        """Clear selection."""
-        self.selected_exercise = None
+        output.write("[green]Refreshed![/]")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ENTRY POINT
-# ══════════════════════════════════════════════════════════════════════════════
-
+# Entry point
 def main() -> None:
     """Run the Pytest Battle TUI."""
     app = PytestBattleTUI()
