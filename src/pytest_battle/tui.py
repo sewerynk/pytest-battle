@@ -454,8 +454,46 @@ def get_exercises_dir() -> Path:
     return Path(__file__).parent.parent.parent / "exercises"
 
 
-def get_exercise_status(exercise_path: Path) -> str:
-    """Run tests for an exercise and return status."""
+# ══════════════════════════════════════════════════════════════════════════════
+# STATUS CACHE - prevents duplicate subprocess calls
+# ══════════════════════════════════════════════════════════════════════════════
+
+_status_cache: dict[str, tuple[str, float]] = {}  # path -> (status, mtime)
+
+
+def _get_exercise_mtime(exercise_path: Path) -> float:
+    """Get the latest modification time of exercise files."""
+    try:
+        mtimes = []
+        for f in exercise_path.glob("*.py"):
+            mtimes.append(f.stat().st_mtime)
+        return max(mtimes) if mtimes else 0.0
+    except Exception:
+        return 0.0
+
+
+def clear_status_cache() -> None:
+    """Clear the status cache."""
+    _status_cache.clear()
+
+
+def get_exercise_status(exercise_path: Path, use_cache: bool = True) -> str:
+    """Run tests for an exercise and return status.
+
+    Args:
+        exercise_path: Path to the exercise directory
+        use_cache: If True, use cached status if files haven't changed
+    """
+    cache_key = str(exercise_path)
+    current_mtime = _get_exercise_mtime(exercise_path)
+
+    # Check cache first
+    if use_cache and cache_key in _status_cache:
+        cached_status, cached_mtime = _status_cache[cache_key]
+        if cached_mtime >= current_mtime:
+            return cached_status
+
+    # Run tests
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pytest", str(exercise_path), "-q", "--tb=no"],
@@ -463,30 +501,69 @@ def get_exercise_status(exercise_path: Path) -> str:
             timeout=30,
             cwd=exercise_path.parent.parent.parent,
         )
-        return "passed" if result.returncode == 0 else "failed"
+        status = "passed" if result.returncode == 0 else "failed"
+    except subprocess.TimeoutExpired as e:
+        # Kill the child process to prevent zombies
+        if e.args and hasattr(e, 'child'):
+            try:
+                e.child.kill()
+                e.child.wait()
+            except Exception:
+                pass
+        status = "failed"
     except Exception:
-        return "failed"
+        status = "failed"
+
+    # Update cache
+    _status_cache[cache_key] = (status, current_mtime)
+    return status
 
 
 def run_exercise_tests(exercise_path: Path) -> tuple[str, str, int]:
     """Run tests for an exercise and return (stdout, stderr, returncode)."""
+    process = None
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             [sys.executable, "-m", "pytest", str(exercise_path), "-v", "--tb=short"],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=60,
             cwd=exercise_path.parent.parent.parent,
         )
-        return result.stdout, result.stderr, result.returncode
+        stdout, stderr = process.communicate(timeout=60)
+        returncode = process.returncode
+
+        # Invalidate cache since we ran tests (file might have changed)
+        cache_key = str(exercise_path)
+        if cache_key in _status_cache:
+            del _status_cache[cache_key]
+
+        return stdout, stderr, returncode
     except subprocess.TimeoutExpired:
+        # Kill the process and its children
+        if process:
+            try:
+                process.kill()
+                process.wait(timeout=5)
+            except Exception:
+                pass
         return "", "⚠️ Test execution timed out!", 1
     except Exception as e:
+        if process:
+            try:
+                process.kill()
+                process.wait(timeout=5)
+            except Exception:
+                pass
         return "", f"⚠️ Error running tests: {e}", 1
 
 
-def count_exercises() -> dict[str, tuple[int, int]]:
-    """Count passed/total exercises per level."""
+def count_exercises(use_cache: bool = True) -> dict[str, tuple[int, int]]:
+    """Count passed/total exercises per level.
+
+    Args:
+        use_cache: If True, use cached status (much faster after populate_tree)
+    """
     exercises_dir = get_exercises_dir()
     counts = {}
 
@@ -501,7 +578,8 @@ def count_exercises() -> dict[str, tuple[int, int]]:
         for ex_dir in sorted(level_dir.iterdir()):
             if ex_dir.is_dir() and ex_dir.name.startswith("ex"):
                 total += 1
-                if get_exercise_status(ex_dir) == "passed":
+                # Use cache to avoid duplicate subprocess calls
+                if get_exercise_status(ex_dir, use_cache=use_cache) == "passed":
                     passed += 1
 
         counts[level_name] = (passed, total)
@@ -641,9 +719,10 @@ class PytestBattleTUI(App):
 
     def on_mount(self) -> None:
         """Initialize the app when mounted."""
-        self.populate_tree()
-        self.update_progress()
         self.write_welcome_message()
+        self._show_loading_message()
+        # Load exercises asynchronously to prevent UI blocking
+        self.load_exercises_async()
 
     def write_welcome_message(self) -> None:
         """Write welcome message to output."""
@@ -660,6 +739,85 @@ class PytestBattleTUI(App):
         output.write("")
         output.write("[dim #8b7355]May your gears turn smoothly! 🔧[/]")
         output.write("")
+
+    def _show_loading_message(self) -> None:
+        """Show loading indicator in the progress section."""
+        progress_text = self.query_one("#progress-text", Static)
+        progress_text.update("[bold #d4a84b]⚙️ Loading exercises... ⚙️[/]")
+
+    @work(exclusive=True, thread=True)
+    def load_exercises_async(self) -> None:
+        """Load exercises in a background thread to prevent UI blocking."""
+        # Collect exercise data in background thread
+        exercises_dir = get_exercises_dir()
+        exercise_data = []
+
+        level_names = {
+            "01_junior": ("🔩 Junior", "junior"),
+            "02_mid": ("⚙️  Mid", "mid"),
+            "03_senior": ("🔧 Senior", "senior"),
+        }
+
+        for level_dir in sorted(exercises_dir.iterdir()):
+            if not level_dir.is_dir():
+                continue
+
+            display_name, level_key = level_names.get(
+                level_dir.name,
+                (level_dir.name, "unknown")
+            )
+            level_data = {
+                "display_name": display_name,
+                "level_key": level_key,
+                "path": level_dir,
+                "exercises": [],
+            }
+
+            for ex_dir in sorted(level_dir.iterdir()):
+                if not ex_dir.is_dir() or not ex_dir.name.startswith("ex"):
+                    continue
+
+                # Get status (this populates the cache)
+                status = get_exercise_status(ex_dir)
+                level_data["exercises"].append({
+                    "path": ex_dir,
+                    "status": status,
+                    "level_key": level_key,
+                })
+
+            exercise_data.append(level_data)
+
+        # Update UI on main thread
+        self.call_from_thread(self._populate_tree_from_data, exercise_data)
+        self.call_from_thread(self.update_progress)
+
+    def _populate_tree_from_data(self, exercise_data: list) -> None:
+        """Populate tree from pre-loaded data (runs on main thread)."""
+        tree = self.query_one("#exercise-tree", Tree)
+        tree.clear()
+        tree.root.expand()
+
+        for level_data in exercise_data:
+            level_node = tree.root.add(f"[bold]{level_data['display_name']}[/]", expand=True)
+            level_node.data = {"type": "level", "path": level_data["path"]}
+
+            for ex_data in level_data["exercises"]:
+                status = ex_data["status"]
+                status_icon = STATUS_ICONS.get(status, "⏳")
+                ex_name = ex_data["path"].name.replace("_", " ").title()
+
+                if status == "passed":
+                    label = f"[green]{status_icon} {ex_name}[/]"
+                else:
+                    label = f"[#e8dcc4]{status_icon} {ex_name}[/]"
+
+                ex_node = level_node.add_leaf(label)
+                ex_node.data = {
+                    "type": "exercise",
+                    "path": ex_data["path"],
+                    "level": ex_data["level_key"],
+                    "status": status,
+                }
 
     def populate_tree(self) -> None:
         """Populate the exercise tree."""
@@ -795,9 +953,8 @@ class PytestBattleTUI(App):
         # Update UI with results
         self.call_from_thread(self._show_results, stdout, stderr, returncode)
 
-        # Refresh progress
-        self.call_from_thread(self.update_progress)
-        self.call_from_thread(self.populate_tree)
+        # Refresh progress and tree using async loading (prevents UI blocking)
+        self.call_from_thread(self.load_exercises_async)
 
     def _show_running(self, name: str) -> None:
         """Show running status in output."""
@@ -877,10 +1034,12 @@ class PytestBattleTUI(App):
         output.clear()
         output.write("[#d4a84b]🔄 Refreshing...[/]")
 
-        self.populate_tree()
-        self.update_progress()
+        # Clear cache to force re-checking all exercises
+        clear_status_cache()
+        self._show_loading_message()
 
-        output.write("[#4caf50]✅ Refreshed![/]")
+        # Use async loading to prevent UI blocking
+        self.load_exercises_async()
 
     def action_go_back(self) -> None:
         """Clear selection."""
